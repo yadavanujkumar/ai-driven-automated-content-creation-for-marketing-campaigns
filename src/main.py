@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from routes.content import content_router
+from middleware.rate_limiter import rate_limit_middleware
 import logging
 
 # Initialize logging
@@ -11,9 +12,12 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI(
     title="AI-Driven Automated Content Creation",
-    description="An API for generating AI-driven marketing content.",
-    version="1.0.0",
+    description="An API for generating AI-driven marketing content with advanced analytics.",
+    version="2.0.0",
 )
+
+# Add rate limiting middleware
+app.middleware("http")(rate_limit_middleware)
 
 # CORS middleware configuration
 origins = [
@@ -50,10 +54,20 @@ async def general_exception_handler(request: Request, exc: Exception):
 @app.get("/health", tags=["Health"])
 async def health_check():
     """
-    Health check endpoint to verify the service is running.
+    Health check endpoint to verify the service is running with system status.
     """
     logger.info("Health check endpoint accessed.")
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "version": "2.0.0",
+        "features": {
+            "content_generation": "enabled",
+            "sentiment_analysis": "enabled",
+            "seo_analytics": "enabled",
+            "rate_limiting": "enabled",
+            "campaign_management": "enabled"
+        }
+    }
 
 # Include routers
 app.include_router(content_router, prefix="/api/v1/content", tags=["Content"])
