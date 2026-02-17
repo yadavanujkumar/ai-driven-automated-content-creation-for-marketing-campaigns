@@ -12,6 +12,13 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.content_analytics import ContentAnalytics
+from services.cache_service import content_cache
+from utils.exceptions import (
+    ContentNotFoundError,
+    CampaignNotFoundError,
+    ContentGenerationError,
+    InsufficientDataError
+)
 
 # Router for content routes
 content_router = APIRouter()
@@ -156,9 +163,25 @@ def generate_ai_content(prompt: str, tone: str, length: int, keywords: List[str]
 @content_router.post("/generate", response_model=ContentResponse, status_code=status.HTTP_201_CREATED)
 async def generate_content(request: ContentGenerateRequest):
     """
-    Generate AI-driven marketing content with quality scoring and sentiment analysis
+    Generate AI-driven marketing content with quality scoring and sentiment analysis.
+    Results are cached to improve performance for repeated requests.
     """
     try:
+        # Check cache first
+        cached_result = content_cache.get_content(
+            request.prompt,
+            request.tone,
+            request.length,
+            request.keywords,
+            request.platform
+        )
+        
+        if cached_result:
+            # Return cached content with cache indicator
+            cached_result['from_cache'] = True
+            return ContentResponse(**cached_result)
+        
+        # Generate new content
         generated_content = generate_ai_content(
             request.prompt, 
             request.tone, 
@@ -189,16 +212,28 @@ async def generate_content(request: ContentGenerateRequest):
             'platform': request.platform
         }
 
-        return ContentResponse(
-            id=content_id,
-            content=generated_content,
-            created_at=timestamp,
-            quality_score=quality_score,
-            seo_score=seo_score,
-            sentiment=sentiment_result.sentiment
+        response_data = {
+            'id': content_id,
+            'content': generated_content,
+            'created_at': timestamp,
+            'quality_score': quality_score,
+            'seo_score': seo_score,
+            'sentiment': sentiment_result.sentiment
+        }
+        
+        # Cache the result
+        content_cache.cache_content(
+            request.prompt,
+            request.tone,
+            request.length,
+            response_data,
+            request.keywords,
+            request.platform
         )
+
+        return ContentResponse(**response_data)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Content generation failed: {str(e)}")
+        raise ContentGenerationError(detail=f"Content generation failed: {str(e)}")
 
 # Route: Retrieve content by ID
 @content_router.get("/content/{content_id}", response_model=Dict)
@@ -208,7 +243,7 @@ async def get_content(content_id: str):
     """
     content = content_db.get(content_id)
     if not content:
-        raise HTTPException(status_code=404, detail="Content not found")
+        raise ContentNotFoundError(content_id)
     return content
 
 # Route: Get sentiment analysis for existing content
@@ -219,7 +254,7 @@ async def get_content_sentiment(content_id: str):
     """
     content = content_db.get(content_id)
     if not content:
-        raise HTTPException(status_code=404, detail="Content not found")
+        raise ContentNotFoundError(content_id)
     
     return analyze_sentiment(content['content'])
 
@@ -270,7 +305,7 @@ async def get_campaign(campaign_id: str):
     """
     campaign = campaigns_db.get(campaign_id)
     if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
+        raise CampaignNotFoundError(campaign_id)
     return CampaignResponse(**campaign)
 
 # Route: Delete a campaign by ID
@@ -280,7 +315,7 @@ async def delete_campaign(campaign_id: str):
     Delete a campaign by ID
     """
     if campaign_id not in campaigns_db:
-        raise HTTPException(status_code=404, detail="Campaign not found")
+        raise CampaignNotFoundError(campaign_id)
     
     del campaigns_db[campaign_id]
     return {"message": "Campaign deleted successfully"}
@@ -293,7 +328,7 @@ async def get_campaign_analytics(campaign_id: str):
     """
     campaign = campaigns_db.get(campaign_id)
     if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
+        raise CampaignNotFoundError(campaign_id)
     
     # Get analytics for all content in the campaign
     content_analytics = []
@@ -328,7 +363,7 @@ async def get_detailed_content_analysis(content_id: str):
     """
     content = content_db.get(content_id)
     if not content:
-        raise HTTPException(status_code=404, detail="Content not found")
+        raise ContentNotFoundError(content_id)
     
     # Generate comprehensive analysis report
     keywords = content.get('keywords', [])
@@ -351,7 +386,7 @@ async def compare_content(content_ids: List[str]):
     Compare multiple content pieces and get comparative analytics
     """
     if len(content_ids) < 2:
-        raise HTTPException(status_code=400, detail="At least 2 content IDs required for comparison")
+        raise InsufficientDataError("At least 2 content IDs required for comparison")
     
     comparisons = []
     for content_id in content_ids:
@@ -370,7 +405,7 @@ async def compare_content(content_ids: List[str]):
             })
     
     if not comparisons:
-        raise HTTPException(status_code=404, detail="No valid content found for comparison")
+        raise ContentNotFoundError("None of the provided content IDs")
     
     # Find best performing content
     best_overall = max(comparisons, key=lambda x: x['overall_score'])
@@ -386,3 +421,20 @@ async def compare_content(content_ids: List[str]):
             'best_engagement_content_id': best_engagement['content_id']
         }
     }
+
+# Route: Get cache statistics
+@content_router.get("/cache/stats")
+async def get_cache_stats():
+    """
+    Get cache performance statistics
+    """
+    return content_cache.get_stats()
+
+# Route: Clear cache
+@content_router.post("/cache/clear")
+async def clear_cache():
+    """
+    Clear content generation cache
+    """
+    content_cache.clear()
+    return {"message": "Cache cleared successfully"}

@@ -6,10 +6,47 @@ The **AI-Driven Automated Content Creation for Marketing Campaigns** project is 
 
 ### Key Features
 - **AI-Powered Content Generation**: Create engaging and platform-specific content using state-of-the-art natural language processing (NLP) models.
+- **Advanced Content Analytics**: Comprehensive analysis including readability scores, engagement metrics, and SEO recommendations.
+- **Sentiment Analysis**: Automatic sentiment detection for generated content to ensure appropriate tone.
+- **Quality & SEO Scoring**: Real-time quality and SEO scoring to optimize content effectiveness.
+- **Content Caching**: Intelligent caching system for improved performance and reduced API costs.
+- **Rate Limiting**: Built-in rate limiting to protect API resources and ensure fair usage.
+- **Multi-Platform Support**: Generate content optimized for various platforms, including Twitter, LinkedIn, Instagram, and more.
+- **Campaign Analytics**: Track and compare performance metrics across multiple content pieces.
 - **Customizable Campaigns**: Tailor content to specific audiences, industries, and marketing goals.
-- **Multi-Platform Support**: Generate content optimized for various platforms, including social media, email, and blogs.
 - **API Integration**: Seamlessly integrate with existing marketing tools and workflows.
 - **Scalable Architecture**: Designed to handle large datasets and high traffic.
+
+---
+
+## What's New in Version 2.0
+
+### Enhanced Features
+- **Content Analytics Service**: Advanced analysis including:
+  - Flesch Reading Ease score for readability
+  - Engagement potential scoring
+  - Keyword density analysis
+  - SEO recommendations
+  
+- **Sentiment Analysis**: Real-time sentiment detection (positive, negative, neutral) with confidence scores
+
+- **Performance Optimization**:
+  - In-memory caching with configurable TTL
+  - Cache hit rate tracking
+  - Automatic cache cleanup
+
+- **API Security**:
+  - Rate limiting (60 requests/minute, 1000 requests/hour)
+  - Custom exception handling
+  - Rate limit headers in responses
+
+- **New API Endpoints**:
+  - `GET /api/v1/content/{id}/analysis` - Detailed content analysis
+  - `GET /api/v1/content/{id}/sentiment` - Sentiment analysis
+  - `POST /api/v1/content/compare` - Compare multiple content pieces
+  - `GET /api/v1/campaigns/{id}/analytics` - Campaign analytics
+  - `GET /api/v1/cache/stats` - Cache performance statistics
+  - `POST /api/v1/cache/clear` - Clear content cache
 
 ---
 
@@ -30,8 +67,9 @@ The system is built using a modular architecture to ensure scalability and maint
 - **Purpose**: Handles API requests, business logic, and communication with the AI model.
 - **Features**:
   - Content generation endpoints.
-  - User authentication and authorization.
+  - Advanced analytics and scoring.
   - Campaign management and storage.
+  - Rate limiting and caching.
 
 ### 3. **AI Engine**
 - **Technology**: Python (Hugging Face Transformers, OpenAI API)
@@ -41,14 +79,23 @@ The system is built using a modular architecture to ensure scalability and maint
   - Sentiment analysis and tone adjustment.
   - Keyword optimization.
 
-### 4. **Containerization**
+### 4. **Analytics Engine**
+- **Technology**: Python (Custom Analytics Service)
+- **Purpose**: Provides comprehensive content analysis and insights.
+- **Features**:
+  - Readability analysis.
+  - Engagement scoring.
+  - SEO optimization recommendations.
+  - Comparative analysis.
+
+### 5. **Containerization**
 - **Technology**: Docker
 - **Purpose**: Ensures consistent deployment across environments.
 - **Features**:
   - Pre-configured Docker images for the frontend, backend, and AI engine.
   - Docker Compose for multi-container orchestration.
 
-### 5. **Database**
+### 6. **Database**
 - **Technology**: PostgreSQL
 - **Purpose**: Stores user data, campaign details, and generated content.
 - **Features**:
