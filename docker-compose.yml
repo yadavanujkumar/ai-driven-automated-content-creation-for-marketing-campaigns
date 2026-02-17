@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  app:
+    image: python:3.10-slim
+    container_name: ai_content_creator_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_content_db
+      - APP_ENV=development
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15
+    container_name: ai_content_creator_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_content_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    container_name: ai_content_creator_redis
+    ports:
+      - "6379:6379"
+
+  frontend:
+    image: node:20
+    container_name: ai_content_creator_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/frontend
+    working_dir: /frontend
+    command: npm start
+    ports:
+      - "3000:3000"
+
+  worker:
+    image: python:3.10-slim
+    container_name: ai_content_creator_worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A app.worker worker --loglevel=info
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - db
+
+volumes:
+  db_data:
