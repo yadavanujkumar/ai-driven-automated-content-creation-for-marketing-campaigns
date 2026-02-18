@@ -368,4 +368,3 @@ For issues, questions, or suggestions:
 
 ---
 
-**Made with ❤️ by the AI Content Creation Team
